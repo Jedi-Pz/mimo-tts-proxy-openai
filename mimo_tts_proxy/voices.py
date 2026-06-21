@@ -7,6 +7,8 @@ preset voice name, so clients can pass any MIMO preset directly.
 import base64
 from pathlib import Path
 
+from .config import BASE_DIR
+
 _SAMPLE_MIME = {".mp3": "audio/mpeg", ".wav": "audio/wav"}
 
 
@@ -53,6 +55,8 @@ def build_voice_param(spec):
 
 def _encode_sample(file_path):
     path = Path(file_path)
+    if not path.is_absolute():
+        path = BASE_DIR / path
     data = path.read_bytes()
     if len(data) > 10 * 1024 * 1024:
         raise ValueError("voice sample >10MB: %s" % file_path)

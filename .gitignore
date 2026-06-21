@@ -33,3 +33,7 @@ Thumbs.db
 
 # Runtime logs
 proxy.log
+
+# Voice samples — audio files stay local
+samples/*
+!samples/.gitkeep

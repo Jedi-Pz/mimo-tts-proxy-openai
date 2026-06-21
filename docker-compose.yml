@@ -10,3 +10,4 @@ services:
     volumes:
       - ./voices.yaml:/app/voices.yaml:ro
       - ./config.yaml:/app/config.yaml:ro
+      - ./samples:/app/samples:ro

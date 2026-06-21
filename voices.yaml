@@ -1,6 +1,6 @@
 voices:
   zhuangfangyi:
-    sample_file: "/Users/pz/.openclaw/media/voices/庄方宜-声音克隆.wav"
+    sample_file: "samples/庄方宜-声音克隆.wav"
     base_style: "温柔、知性的女声"
     emotion_inference: true
   bingtang:
