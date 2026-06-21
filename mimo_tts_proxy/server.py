@@ -3,6 +3,7 @@ import json
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from .config import resolve_proxy_api_key
 from .emotion import assemble_style_prompt, infer_emotion
 from .mimo import build_mimo_request, select_model, synthesize
 from .transcode import content_type_for, needs_transcode, transcode_audio
@@ -14,6 +15,25 @@ class ProxyError(Exception):
         super().__init__(message)
         self.status = status
         self.type_ = type_
+
+
+def check_auth(auth_header, proxy_key):
+    """Validate ``Authorization: Bearer <key>`` against the configured proxy key.
+
+    When *proxy_key* is None, auth is not required — all requests pass.
+    When *proxy_key* is set, the ``Authorization`` header must contain
+    ``Bearer <key>``` (case-insensitive scheme).  Raises ProxyError(401)
+    on mismatch.
+    """
+    if proxy_key is None:
+        return
+    if not auth_header:
+        raise ProxyError("Authorization header missing", 401, "authentication_error")
+    parts = auth_header.split(None, 1)
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise ProxyError("Authorization must be Bearer <key>", 401, "authentication_error")
+    if parts[1] != proxy_key:
+        raise ProxyError("Invalid proxy API key", 401, "authentication_error")
 
 
 def handle_speech(body, state):
@@ -70,7 +90,7 @@ def handle_speech(body, state):
     return audio_bytes, content_type_for(response_format)
 
 
-def make_handler(state):
+def make_handler(state, proxy_key):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
@@ -86,12 +106,22 @@ def make_handler(state):
             self.wfile.write(data)
 
         def do_GET(self):
+            try:
+                check_auth(self.headers.get("Authorization"), proxy_key)
+            except ProxyError as e:
+                self._send_json(e.status, {"error": {"message": str(e), "type": e.type_}})
+                return
             if self.path in ("/", "/health"):
                 self._send_json(200, {"status": "ok"})
             else:
                 self._send_json(404, {"error": {"message": "not found", "type": "not_found"}})
 
         def do_POST(self):
+            try:
+                check_auth(self.headers.get("Authorization"), proxy_key)
+            except ProxyError as e:
+                self._send_json(e.status, {"error": {"message": str(e), "type": e.type_}})
+                return
             if self.path != "/v1/audio/speech":
                 self._send_json(404, {"error": {"message": "not found", "type": "not_found"}})
                 return
@@ -123,6 +153,11 @@ def make_handler(state):
 
 
 def serve(state, host, port):
-    server = ThreadingHTTPServer((host, port), make_handler(state))
+    proxy_key = resolve_proxy_api_key()
+    if proxy_key:
+        print("proxy API key configured — authentication required", file=sys.stderr)
+    else:
+        print("proxy API key NOT configured — running open (no auth)", file=sys.stderr)
+    server = ThreadingHTTPServer((host, port), make_handler(state, proxy_key))
     print("mimo-tts-proxy listening on http://%s:%d/v1/audio/speech" % (host, port))
     server.serve_forever()

@@ -74,3 +74,38 @@ def _read_dotenv_key(path):
     except FileNotFoundError:
         pass
     return None
+
+
+def _read_dotenv_value(path, key_name):
+    """Parse ``KEY_NAME=VALUE`` from a .env file.
+
+    Returns the value as a string, or None.
+    """
+    prefix = key_name + "="
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith(prefix):
+                    value = line.split("=", 1)[1].strip()
+                    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                        value = value[1:-1]
+                    return value or None
+    except FileNotFoundError:
+        pass
+    return None
+
+
+def resolve_proxy_api_key():
+    """Read PROXY_API_KEY from the project .env file (optional).
+
+    When set, clients MUST include ``Authorization: Bearer <key>``.
+    When unset (None), no auth is required — suitable for isolated LANs.
+    """
+    dotenv_path = os.environ.get("MIMO_TTS_PROXY_DOTENV", str(BASE_DIR / ".env"))
+    key = _read_dotenv_value(dotenv_path, "PROXY_API_KEY")
+    if key:
+        return key
+    return os.environ.get("PROXY_API_KEY") or None

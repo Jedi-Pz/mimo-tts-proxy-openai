@@ -52,27 +52,48 @@ check_prereqs() {
 
 setup_dotenv() {
     echo ""
-    echo -e "${BOLD}配置 MIMO API Key...${NC}"
+    echo -e "${BOLD}配置环境...${NC}"
 
-    local key=""
+    local mimo_key=""
+    local proxy_key=""
+
     if [ -f .env ]; then
-        key=$(grep '^MIMO_API_KEY=' .env 2>/dev/null | sed 's/^MIMO_API_KEY=//' | tr -d '"'"'"' || true)
-        if [ -n "$key" ] && [ "$key" != "sk-your-key-here" ]; then
-            echo -e "  ${GREEN}✓${NC} .env 已配置"
-            return
-        fi
+        mimo_key=$(grep '^MIMO_API_KEY=' .env 2>/dev/null | sed 's/^MIMO_API_KEY=//' | tr -d '"'"'"' || true)
+        proxy_key=$(grep '^PROXY_API_KEY=' .env 2>/dev/null | sed 's/^PROXY_API_KEY=//' | tr -d '"'"'"' || true)
     fi
 
-    echo "  在 https://xiaomimimo.com 注册获取 API Key"
-    echo ""
-    read -r -p "  请输入 MIMO API Key (sk-...): " key
-    if [ -z "$key" ]; then
-        echo -e "${RED}✗ API Key 不能为空，部署中止${NC}"
-        exit 1
+    # MIMO API key
+    if [ -n "$mimo_key" ] && [ "$mimo_key" != "sk-your-mimo-api-key" ] && [ "$mimo_key" != "sk-your-key-here" ]; then
+        echo -e "  ${GREEN}✓${NC} MIMO_API_KEY 已配置"
+    else
+        echo "  在 https://xiaomimimo.com 注册获取 API Key"
+        echo ""
+        read -r -p "  请输入 MIMO API Key (sk-...): " mimo_key
+        if [ -z "$mimo_key" ]; then
+            echo -e "${RED}✗ MIMO API Key 不能为空，部署中止${NC}"
+            exit 1
+        fi
+        echo "MIMO_API_KEY=$mimo_key" > .env
+        echo -e "  ${GREEN}✓${NC} MIMO_API_KEY 已写入"
     fi
-    echo "MIMO_API_KEY=$key" > .env
-    chmod 600 .env
-    echo -e "  ${GREEN}✓${NC} .env 已创建"
+
+    # Proxy API key (auth for the proxy itself)
+    if [ -n "$proxy_key" ]; then
+        echo -e "  ${GREEN}✓${NC} PROXY_API_KEY 已配置"
+    else
+        proxy_key=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+        if [ -f .env ] && grep -q '^PROXY_API_KEY=' .env 2>/dev/null; then
+            # Replace placeholder or empty value
+            sed -i.bak "s/^PROXY_API_KEY=.*/PROXY_API_KEY=$proxy_key/" .env 2>/dev/null || \
+                echo "PROXY_API_KEY=$proxy_key" >> .env
+        else
+            echo "PROXY_API_KEY=$proxy_key" >> .env
+        fi
+        echo -e "  ${GREEN}✓${NC} PROXY_API_KEY 自动生成: ${proxy_key:0:12}..."
+        echo "      (客户端需要 Authorization: Bearer $proxy_key)"
+    fi
+
+    chmod 600 .env 2>/dev/null || true
 }
 
 # ── 3. voices.yaml 检测 ────────────────────────────────────────

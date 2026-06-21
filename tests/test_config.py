@@ -6,7 +6,12 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from mimo_tts_proxy.config import _read_dotenv_key, resolve_api_key
+from mimo_tts_proxy.config import (
+    _read_dotenv_key,
+    _read_dotenv_value,
+    resolve_api_key,
+    resolve_proxy_api_key,
+)
 
 
 class ReadDotenvKeyTest(unittest.TestCase):
@@ -76,6 +81,40 @@ class ReadDotenvKeyTest(unittest.TestCase):
             os.unlink(path)
 
 
+class ReadDotenvValueTest(unittest.TestCase):
+    """_read_dotenv_value reads an arbitrary key, used for PROXY_API_KEY."""
+
+    def test_reads_value(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("PROXY_API_KEY=my-proxy-key\n")
+            f.flush()
+            path = f.name
+        try:
+            self.assertEqual(_read_dotenv_value(path, "PROXY_API_KEY"), "my-proxy-key")
+        finally:
+            os.unlink(path)
+
+    def test_returns_none_when_key_missing(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("OTHER=val\n")
+            f.flush()
+            path = f.name
+        try:
+            self.assertIsNone(_read_dotenv_value(path, "PROXY_API_KEY"))
+        finally:
+            os.unlink(path)
+
+    def test_quoted_value_stripped(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write('PROXY_API_KEY="some-secret"\n')
+            f.flush()
+            path = f.name
+        try:
+            self.assertEqual(_read_dotenv_value(path, "PROXY_API_KEY"), "some-secret")
+        finally:
+            os.unlink(path)
+
+
 class ResolveApiKeyTest(unittest.TestCase):
     def test_exits_when_no_env_file_and_no_env_var(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -122,6 +161,35 @@ class ResolveApiKeyTest(unittest.TestCase):
             with patch.dict(os.environ, {}, clear=True):
                 with patch.object(cfg, "BASE_DIR", Path(tmpdir)):
                     self.assertEqual(resolve_api_key(), "sk-default-path")
+
+
+class ResolveProxyApiKeyTest(unittest.TestCase):
+    def test_returns_none_when_not_configured(self):
+        """Absence is fine — auth is optional (but recommended)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("MIMO_API_KEY=sk-test\n")
+            f.flush()
+            path = f.name
+        try:
+            with patch.dict(os.environ, {"MIMO_TTS_PROXY_DOTENV": path}, clear=True):
+                self.assertIsNone(resolve_proxy_api_key())
+        finally:
+            os.unlink(path)
+
+    def test_reads_proxy_key_from_dotenv(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("PROXY_API_KEY=secret-proxy-key\n")
+            f.flush()
+            path = f.name
+        try:
+            with patch.dict(os.environ, {"MIMO_TTS_PROXY_DOTENV": path}, clear=True):
+                self.assertEqual(resolve_proxy_api_key(), "secret-proxy-key")
+        finally:
+            os.unlink(path)
+
+    def test_falls_back_to_env_var(self):
+        with patch.dict(os.environ, {"PROXY_API_KEY": "from-env"}, clear=True):
+            self.assertEqual(resolve_proxy_api_key(), "from-env")
 
 
 if __name__ == "__main__":
