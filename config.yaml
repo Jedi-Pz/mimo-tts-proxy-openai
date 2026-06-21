@@ -1,0 +1,21 @@
+server:
+  host: "127.0.0.1"
+  port: 9880
+
+mimo:
+  base_url: "https://api.xiaomimimo.com/v1"
+  api_key_env: "MIMO_API_KEY"
+  tts_model_preset: "mimo-v2.5-tts"
+  tts_model_clone: "mimo-v2.5-tts-voiceclone"
+  audio_format: "wav"
+
+emotion:
+  enabled: true
+  model: "mimo-v2-flash"
+  base_url: "https://api.xiaomimimo.com/v1"
+  api_key_env: "MIMO_API_KEY"
+  max_input_chars: 1000
+
+audio:
+  default_format: "mp3"
+  ffmpeg_path: "ffmpeg"
