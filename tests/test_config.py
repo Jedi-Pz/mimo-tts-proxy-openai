@@ -77,34 +77,39 @@ class ReadDotenvKeyTest(unittest.TestCase):
 
 
 class ResolveApiKeyTest(unittest.TestCase):
-    def test_exits_when_no_env_file(self):
-        with patch("sys.exit") as mock_exit:
-            resolve_api_key()
-            mock_exit.assert_called_once_with(1)
+    def test_exits_when_no_env_file_and_no_env_var(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("sys.exit") as mock_exit:
+                resolve_api_key()
+                mock_exit.assert_called_once_with(1)
 
-    def test_exits_when_key_not_in_env_file(self):
+    def test_exits_when_key_not_in_env_file_and_no_env_var(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("OTHER=value\n")
             f.flush()
             path = f.name
         try:
-            with patch.dict(os.environ, {"MIMO_TTS_PROXY_DOTENV": path}):
+            with patch.dict(os.environ, {"MIMO_TTS_PROXY_DOTENV": path}, clear=True):
                 with patch("sys.exit") as mock_exit:
                     resolve_api_key()
                     mock_exit.assert_called_once_with(1)
         finally:
             os.unlink(path)
 
-    def test_returns_key_when_found(self):
+    def test_returns_key_when_found_in_dotenv(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("MIMO_API_KEY=sk-found\n")
             f.flush()
             path = f.name
         try:
-            with patch.dict(os.environ, {"MIMO_TTS_PROXY_DOTENV": path}):
+            with patch.dict(os.environ, {"MIMO_TTS_PROXY_DOTENV": path}, clear=True):
                 self.assertEqual(resolve_api_key(), "sk-found")
         finally:
             os.unlink(path)
+
+    def test_falls_back_to_env_var_when_no_dotenv(self):
+        with patch.dict(os.environ, {"MIMO_API_KEY": "sk-from-env"}, clear=True):
+            self.assertEqual(resolve_api_key(), "sk-from-env")
 
     def test_falls_back_to_default_dotenv_path(self):
         """When MIMO_TTS_PROXY_DOTENV is not set, reads from BASE_DIR/.env."""
@@ -114,8 +119,9 @@ class ResolveApiKeyTest(unittest.TestCase):
             env_path = os.path.join(tmpdir, ".env")
             with open(env_path, "w") as f:
                 f.write("MIMO_API_KEY=sk-default-path\n")
-            with patch.object(cfg, "BASE_DIR", Path(tmpdir)):
-                self.assertEqual(resolve_api_key(), "sk-default-path")
+            with patch.dict(os.environ, {}, clear=True):
+                with patch.object(cfg, "BASE_DIR", Path(tmpdir)):
+                    self.assertEqual(resolve_api_key(), "sk-default-path")
 
 
 if __name__ == "__main__":

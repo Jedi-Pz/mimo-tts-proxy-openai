@@ -25,26 +25,32 @@ def load_voices(path=None):
 
 
 def resolve_api_key(section=None):
-    """Read MIMO_API_KEY from the project .env file.
+    """Read MIMO_API_KEY from the project .env file, with an env-var
+    fallback for Docker (where ``env_file`` injects vars at runtime).
 
-    The *section* parameter is accepted for compatibility but ignored:
-    all services share the same key now.  The .env file path can be
-    overridden via the MIMO_TTS_PROXY_DOTENV environment variable
-    (needed for Docker / launchd / systemd where the default
-    BASE_DIR/.env may not be accessible).
+    The ``section`` parameter is accepted for compatibility but ignored.
     """
+    # 1. Try the .env file (primary path for local / launchd / systemd).
     dotenv_path = os.environ.get("MIMO_TTS_PROXY_DOTENV", str(BASE_DIR / ".env"))
     key = _read_dotenv_key(dotenv_path)
-    if not key:
-        print(
-            "MIMO_API_KEY not found in %s" % dotenv_path,
-            file=sys.stderr,
-        )
-        print("Create a .env file in the project root with:", file=sys.stderr)
-        print("    MIMO_API_KEY=sk-your-key", file=sys.stderr)
-        print("Or run ./deploy.sh to set up interactively.", file=sys.stderr)
-        sys.exit(1)
-    return key
+    if key:
+        return key
+
+    # 2. Fall back to the MIMO_API_KEY environment variable (Docker path).
+    key = os.environ.get("MIMO_API_KEY")
+    if key:
+        return key
+
+    # 3. Neither source available.
+    print(
+        "MIMO_API_KEY not found.\n"
+        "  - Local / macOS launchd / Linux systemd: create a .env file with\n"
+        "      MIMO_API_KEY=sk-your-key\n"
+        "  - Docker: ensure the .env file exists in the project root and\n"
+        "      docker compose uses 'env_file: .env' or '--env-file .env'",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def _read_dotenv_key(path):
