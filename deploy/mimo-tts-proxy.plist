@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mimo-tts-proxy</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{VENV_PYTHON}}</string>
+        <string>-m</string>
+        <string>mimo_tts_proxy.app</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>{{PROJECT_DIR}}</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>MIMO_TTS_PROXY_DOTENV</key>
+        <string>{{PROJECT_DIR}}/.env</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>{{PROJECT_DIR}}/proxy.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{PROJECT_DIR}}/proxy.log</string>
+</dict>
+</plist>

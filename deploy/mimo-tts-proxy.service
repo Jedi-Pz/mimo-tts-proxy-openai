@@ -1,0 +1,16 @@
+[Unit]
+Description=MIMO TTS Proxy
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{PROJECT_DIR}}
+ExecStart={{VENV_PYTHON}} -m mimo_tts_proxy.app
+Environment="MIMO_TTS_PROXY_DOTENV={{PROJECT_DIR}}/.env"
+Restart=always
+RestartSec=5
+StandardOutput=append:{{PROJECT_DIR}}/proxy.log
+StandardError=append:{{PROJECT_DIR}}/proxy.log
+
+[Install]
+WantedBy=default.target
