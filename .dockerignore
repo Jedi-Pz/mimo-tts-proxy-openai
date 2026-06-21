@@ -1,0 +1,15 @@
+# NEVER copy these into the image
+.env
+venv
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+.editorconfig
+*.md
+.DS_Store
+Thumbs.db
+proxy.log
+*.tmp
